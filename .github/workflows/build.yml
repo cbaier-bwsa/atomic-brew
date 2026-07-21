@@ -1,0 +1,42 @@
+# .github/workflows/build.yml
+name: build-image
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 4 * * 1"   # wöchentlich, damit Basis-Updates einfließen
+  workflow_dispatch:
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/atomic-brew
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: podman build -t "${IMAGE}:latest" .
+
+      - name: Login GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push
+        id: push
+        run: |
+          podman push "${IMAGE}:latest" --digestfile=/tmp/digest
+          echo "digest=$(cat /tmp/digest)" >> "$GITHUB_OUTPUT"
+
+      - name: Cosign install
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        run: cosign sign --yes --key env://COSIGN_PRIVATE_KEY "${IMAGE}@${{ steps.push.outputs.digest }}"

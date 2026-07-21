@@ -1,0 +1,14 @@
+# /usr/lib/systemd/user/homebrew-bootstrap.service
+[Unit]
+Description=Homebrew Erstinstallation nach /var/home/linuxbrew
+ConditionPathExists=!/var/home/linuxbrew/.linuxbrew/bin/brew
+After=default.target
+
+[Service]
+Type=oneshot
+Environment=NONINTERACTIVE=1
+ExecStart=/usr/bin/bash -c "curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash"
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target

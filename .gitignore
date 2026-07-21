@@ -1,0 +1,7 @@
+# .gitignore
+*.tar
+*.qcow2
+*.iso
+.build/
+image-out/
+cosign.key
