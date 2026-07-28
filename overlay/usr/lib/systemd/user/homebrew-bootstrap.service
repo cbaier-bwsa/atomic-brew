@@ -1,6 +1,6 @@
 # /usr/lib/systemd/user/homebrew-bootstrap.service
 [Unit]
-Description=Homebrew Erstinstallation nach /var/home/linuxbrew
+Description=Homebrew Erstinstallation + Brewfile nach /var/home/linuxbrew
 ConditionPathExists=!/var/home/linuxbrew/.linuxbrew/bin/brew
 After=default.target
 
@@ -8,6 +8,7 @@ After=default.target
 Type=oneshot
 Environment=NONINTERACTIVE=1
 ExecStart=/usr/bin/bash -c "curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash"
+ExecStartPost=/usr/bin/bash -c "eval \"$(/var/home/linuxbrew/.linuxbrew/bin/brew shellenv)\" && brew bundle --file=/usr/share/coaching/Brewfile"
 RemainAfterExit=yes
 
 [Install]

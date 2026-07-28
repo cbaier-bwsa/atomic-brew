@@ -5,3 +5,8 @@
 .build/
 image-out/
 cosign.key
+
+# Claude-spezifisch
+CLAUDE.md
+.claude/
+.docs/

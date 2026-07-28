@@ -1,0 +1,10 @@
+# /usr/share/coaching/Brewfile
+brew "nushell"
+brew "helix"
+brew "ripgrep"
+brew "fd"
+brew "fzf"
+brew "bat"
+brew "eza"
+brew "lazygit"
+brew "gh"

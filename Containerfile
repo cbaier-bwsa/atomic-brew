@@ -9,8 +9,7 @@ RUN dnf -y install \
         @development-tools \
         gcc gcc-c++ make \
         procps-ng curl file git \
-        libxcrypt-compat \
-        nushell helix && \
+        libxcrypt-compat && \
     dnf clean all && \
     rm -rf /var/cache/libdnf5 /var/lib/dnf /var/log/* /var/cache/ldconfig/* \
            /run/dnf /run/svnserve
@@ -24,5 +23,5 @@ RUN systemctl --global enable homebrew-bootstrap.service
 RUN bootc container lint
 
 LABEL org.opencontainers.image.title="Atomic Brew" \
-      org.opencontainers.image.description="Fedora Sway Atomic + Homebrew-Toolchain" \
+      org.opencontainers.image.description="Fedora Sway Atomic + Homebrew-Toolchain, CLI aus Brewfile" \
       containers.bootc="1"

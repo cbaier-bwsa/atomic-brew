@@ -2,9 +2,10 @@
 
 Fedora Sway Atomic + Homebrew-Toolchain als bootc-Image.
 
-- Build-Toolchain im Image (`/usr`)
+- Nur die Build-Toolchain im Image (`/usr`)
 - Homebrew zur Laufzeit in `/var/home/linuxbrew`
-- Nushell-Integration über `/usr/share/atomic/homebrew.nu`
+- Nushell, Helix & CLI kommen per First-Boot-Brewfile aus Brew
+- Nushell-Integration über `/usr/share/coaching/homebrew.nu`
 
 ## Aktivieren
     sudo bootc switch ghcr.io/cbaier-bwsa/atomic-brew:latest
