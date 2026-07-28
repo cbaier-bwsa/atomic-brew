@@ -18,18 +18,34 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Build
         run: podman build -t "${IMAGE}:latest" .
 
-      - name: Login GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u "${{ github.actor }}" --password-stdin
+      # podman-Login für den Push (schreibt nach ~/.docker/config.json,
+      # damit cosign später dieselben Credentials findet)
+      - name: Login GHCR (podman)
+        run: |
+          mkdir -p ~/.docker
+          echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io \
+            -u "${{ github.actor }}" --password-stdin \
+            --authfile ~/.docker/config.json
+
+      # zusätzlicher Docker-Login: cosign liest ausschließlich ~/.docker/config.json
+      - name: Login GHCR (cosign)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push
         id: push
         run: |
-          podman push "${IMAGE}:latest" --digestfile=/tmp/digest
+          podman push "${IMAGE}:latest" \
+            --authfile ~/.docker/config.json \
+            --digestfile=/tmp/digest
           echo "digest=$(cat /tmp/digest)" >> "$GITHUB_OUTPUT"
 
       - name: Cosign install
@@ -39,4 +55,7 @@ jobs:
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
-        run: cosign sign --yes --key env://COSIGN_PRIVATE_KEY "${IMAGE}@${{ steps.push.outputs.digest }}"
+        run: |
+          cosign sign --yes \
+            --key env://COSIGN_PRIVATE_KEY \
+            "${IMAGE}@${{ steps.push.outputs.digest }}"
