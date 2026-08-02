@@ -4,6 +4,7 @@
 *.iso
 .build/
 image-out/
+output/
 cosign.key
 
 # Claude-spezifisch

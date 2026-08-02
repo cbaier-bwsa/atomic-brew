@@ -1,0 +1,6 @@
+# /usr/lib/bootc/install/20-rootfs.toml
+# Default-Dateisystem für die Root-Partition. Ohne diese Angabe verlangen
+# bootc-image-builder ("no default root filesystem type specified in
+# container") und `bootc install` das Dateisystem bei jedem Aufruf per Flag.
+[install]
+root-fs-type = "btrfs"
