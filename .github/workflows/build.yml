@@ -56,6 +56,9 @@ jobs:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
         run: |
-          cosign sign --yes \
+          # kein Rekor-Upload: die Verifikation läuft rein über cosign.pub,
+          # der öffentliche Transparency-Log bringt hier nichts und lässt den
+          # Job scheitern, sobald ein Digest schon einmal signiert wurde
+          cosign sign --yes --tlog-upload=false \
             --key env://COSIGN_PRIVATE_KEY \
             "${IMAGE}@${{ steps.push.outputs.digest }}"
