@@ -1,5 +1,5 @@
-# Containerfile
-FROM quay.io/fedora-ostree-desktops/sway-atomic:44
+# Containerfile — Basis: Build-Toolchain für Homebrew, keine Desktop-Umgebung
+FROM quay.io/fedora-ostree-desktops/base-atomic:44
 
 # Manche Pakete verlangen ein vorhandenes /var/roothome, sonst bricht der Build ab.
 RUN mkdir -p /var/roothome
@@ -22,6 +22,6 @@ RUN systemctl --global enable homebrew-bootstrap.service
 # --- bootc-Lint als Qualitätssicherung im Build ---
 RUN bootc container lint
 
-LABEL org.opencontainers.image.title="Atomic Brew" \
-      org.opencontainers.image.description="Fedora Sway Atomic + Homebrew-Toolchain, CLI aus Brewfile" \
+LABEL org.opencontainers.image.title="Atomic Brew (Basis)" \
+      org.opencontainers.image.description="Fedora Atomic Basis + Homebrew-Toolchain, CLI aus Brewfile" \
       containers.bootc="1"

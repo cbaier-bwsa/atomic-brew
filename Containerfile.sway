@@ -1,0 +1,13 @@
+# Containerfile.sway — Sway-Desktop auf der Toolchain-Basis
+FROM ghcr.io/cbaier-bwsa/atomic-brew:base
+
+RUN dnf -y install @swaywm @swaywm-extended && \
+    dnf clean all && \
+    rm -rf /var/cache/libdnf5 /var/lib/dnf /var/log/* /var/cache/ldconfig/* \
+           /run/dnf /run/svnserve
+
+RUN bootc container lint
+
+LABEL org.opencontainers.image.title="Atomic Brew (Sway)" \
+      org.opencontainers.image.description="Atomic Brew Basis + Sway-Desktop" \
+      containers.bootc="1"

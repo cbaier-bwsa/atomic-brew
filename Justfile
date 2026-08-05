@@ -3,13 +3,23 @@ image := "ghcr.io/cbaier-bwsa/atomic-brew"
 tag   := "latest"
 
 build:
-    podman build -t {{image}}:{{tag}} .
+    podman build -f Containerfile -t {{image}}:base .
 
-push:
-    podman push {{image}}:{{tag}}
+build-variant variant:
+    podman build -f Containerfile.{{variant}} -t {{image}}:{{variant}} .
 
-lint:
-    podman run --rm {{image}}:{{tag}} bootc container lint
+# Basis, dann Sway; :latest zeigt weiter auf Sway
+build-all: build (build-variant "sway")
+    podman tag {{image}}:sway {{image}}:latest
+
+push variant:
+    podman push {{image}}:{{variant}}
+
+push-all:
+    for t in base sway latest; do podman push {{image}}:$t; done
+
+lint variant="sway":
+    podman run --rm {{image}}:{{variant}} bootc container lint
 
 login:
     podman login ghcr.io

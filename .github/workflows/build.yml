@@ -21,7 +21,10 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Build
-        run: podman build -t "${IMAGE}:latest" .
+        run: |
+          podman build -f Containerfile      -t "${IMAGE}:base" .
+          podman build -f Containerfile.sway -t "${IMAGE}:sway" .
+          podman tag "${IMAGE}:sway" "${IMAGE}:latest"
 
       # podman-Login für den Push (schreibt nach ~/.docker/config.json,
       # damit cosign später dieselben Credentials findet)
@@ -40,25 +43,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push
-        id: push
-        run: |
-          podman push "${IMAGE}:latest" \
-            --authfile ~/.docker/config.json \
-            --digestfile=/tmp/digest
-          echo "digest=$(cat /tmp/digest)" >> "$GITHUB_OUTPUT"
-
       - name: Cosign install
         uses: sigstore/cosign-installer@v3
 
-      - name: Sign
+      - name: Push & Sign
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
         run: |
+          for tag in base sway latest; do
+            podman push "${IMAGE}:${tag}" \
+              --authfile ~/.docker/config.json \
+              --digestfile="/tmp/digest-${tag}"
+          done
+          # :latest teilt sich den Digest mit :sway, und die Signatur hängt am Digest,
+          # nicht am Tag — also nur die beiden echten Images signieren.
           # kein Rekor-Upload: die Verifikation läuft rein über cosign.pub,
           # der öffentliche Transparency-Log bringt hier nichts und lässt den
           # Job scheitern, sobald ein Digest schon einmal signiert wurde
-          cosign sign --yes --tlog-upload=false \
-            --key env://COSIGN_PRIVATE_KEY \
-            "${IMAGE}@${{ steps.push.outputs.digest }}"
+          for tag in base sway; do
+            cosign sign --yes --tlog-upload=false \
+              --key env://COSIGN_PRIVATE_KEY \
+              "${IMAGE}@$(cat /tmp/digest-${tag})"
+          done
