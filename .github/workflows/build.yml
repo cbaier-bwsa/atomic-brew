@@ -51,10 +51,25 @@ jobs:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
         run: |
+          # GHCR bricht chunked Blob-Uploads bei diesem großen Image (viele
+          # hundert Layer) gelegentlich mit HTTP 400 ab — transient, daher
+          # Retry statt sofortigem Job-Abbruch
+          push_with_retry() {
+            local tag="$1" attempt
+            for attempt in 1 2 3 4 5; do
+              if podman push "${IMAGE}:${tag}" \
+                --authfile ~/.docker/config.json \
+                --digestfile="/tmp/digest-${tag}"; then
+                return 0
+              fi
+              echo "push ${tag} fehlgeschlagen (Versuch ${attempt}/5), retry in $((attempt * 10))s..."
+              sleep $((attempt * 10))
+            done
+            return 1
+          }
+
           for tag in base sway latest; do
-            podman push "${IMAGE}:${tag}" \
-              --authfile ~/.docker/config.json \
-              --digestfile="/tmp/digest-${tag}"
+            push_with_retry "${tag}"
           done
           # :latest teilt sich den Digest mit :sway, und die Signatur hängt am Digest,
           # nicht am Tag — also nur die beiden echten Images signieren.
