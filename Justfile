@@ -12,11 +12,18 @@ build-variant variant:
 build-all: build (build-variant "sway")
     podman tag {{image}}:sway {{image}}:latest
 
+# Hyprland separat, weil additiv und (noch) nicht Teil von :latest
+build-hypr: build (build-variant "hypr")
+
 push variant:
     podman push {{image}}:{{variant}}
 
 push-all:
     for t in base sway latest; do podman push {{image}}:$t; done
+
+# Hyprland-Push separat halten, solange :hypr nicht in CI eingebunden ist
+push-hypr:
+    podman push {{image}}:hypr
 
 lint variant="sway":
     podman run --rm {{image}}:{{variant}} bootc container lint

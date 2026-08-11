@@ -1,0 +1,22 @@
+# Containerfile.hypr — Hyprland-Desktop auf der Toolchain-Basis
+FROM ghcr.io/cbaier-bwsa/atomic-brew:base
+
+# Hyprland ist kein offizielles Fedora-Paket (keine Comps-Gruppe, kein Standard-Repo) —
+# Quelle: COPR lionheartp/Hyprland (aktiv gepflegt, F44-Ziel, per Copr-API verifiziert).
+# Baut den kompletten Hyprland-Bibliotheksstack konsistent aus einer Quelle, inkl.
+# hyprland-guiutils — im Gegensatz zu ashbuk/Hyprland-Fedora (vorherige Quelle), das
+# seine Abhängigkeiten privat vendort und hyprland-guiutils nicht mitbaute.
+RUN dnf -y copr enable lionheartp/Hyprland && \
+    dnf -y --exclude=kitty install \
+        hyprland xdg-desktop-portal-hyprland hyprlock hypridle hyprland-guiutils \
+        mako sddm sddm-wayland-generic && \
+    dnf -y --repo=fedora --repo=updates install kitty && \
+    dnf clean all && \
+    rm -rf /var/cache/libdnf5 /var/lib/dnf /var/log/* /var/cache/ldconfig/* \
+           /run/dnf /run/svnserve
+
+RUN bootc container lint
+
+LABEL org.opencontainers.image.title="Atomic Brew (Hyprland)" \
+      org.opencontainers.image.description="Atomic Brew Basis + Hyprland-Desktop" \
+      containers.bootc="1"
