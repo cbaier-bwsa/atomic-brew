@@ -15,6 +15,9 @@ build-all: build (build-variant "sway")
 # Hyprland separat, weil additiv und (noch) nicht Teil von :latest
 build-hypr: build (build-variant "hypr")
 
+# Noctalia separat, weil additiv und (noch) nicht Teil von :latest
+build-noctalia: build-hypr (build-variant "noctalia")
+
 push variant:
     podman push {{image}}:{{variant}}
 
@@ -24,6 +27,10 @@ push-all:
 # Hyprland-Push separat halten, solange :hypr nicht in CI eingebunden ist
 push-hypr:
     podman push {{image}}:hypr
+
+# Noctalia-Push separat halten, solange :noctalia nicht in CI eingebunden ist
+push-noctalia:
+    podman push {{image}}:noctalia
 
 lint variant="sway":
     podman run --rm {{image}}:{{variant}} bootc container lint
