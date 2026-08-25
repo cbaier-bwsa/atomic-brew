@@ -40,6 +40,17 @@ RUN cp /usr/share/hypr/hyprland.lua /etc/skel/.config/hypr/hyprland.lua && \
     sed -i 's/^local menu.*/local menu        = "noctalia msg panel-toggle launcher"/' \
         /etc/skel/.config/hypr/hyprland.lua
 
+# mako ist in :hypr installiert und dort das einzige Notification-Backend, aber Noctalia bringt
+# einen eigenen Notification-Server mit (registriert org.freedesktop.Notifications selbst, siehe
+# .docs/11). mako.service ist zwar nicht enabled, aber als Type=dbus/BusName=org.freedesktop.
+# Notifications D-Bus-aktiviert -- startet also automatisch, sobald irgendeine App eine
+# Notification schickt, unabhängig von jedem Autostart-Mechanismus. Live verifiziert: mako
+# schnappt sich den Bus-Namen dadurch vor Noctalia weg ("notifications disabled: ... owned by
+# another service"). Deshalb hier maskieren, analog zum systemd-remount-fs.service-Muster im
+# Basis-Containerfile; --global wirkt ohne laufende User-Session zur Build-Zeit, wie bereits bei
+# homebrew-bootstrap.service genutzt.
+RUN systemctl --global mask mako.service
+
 RUN bootc container lint
 
 LABEL org.opencontainers.image.title="Atomic Brew (Noctalia)" \
