@@ -19,6 +19,14 @@ COPY overlay/ /
 
 RUN systemctl --global enable homebrew-bootstrap.service
 
+# Bekannte Upstream-Regression bei composefs-Root (ostreedev/ostree#3193, RHBZ#2348934):
+# systemd-remount-fs.service scheitert bei jedem Boot mit "mount: /: fsconfig() failed:
+# overlay: No changes allowed in reconfigure", weil es "/" laut /etc/fstab remounten will,
+# was mit dem composefs-Overlay-Root nicht kompatibel ist. Harmlos (blockiert nichts), aber
+# erzeugt einen echten "failed unit"-Eintrag. Fix liegt upstream in systemd (PR #36867), bis
+# dahin maskieren, wie von den betroffenen Projekten selbst als Workaround genannt.
+RUN systemctl mask systemd-remount-fs.service
+
 # --- bootc-Lint als Qualitätssicherung im Build ---
 RUN bootc container lint
 

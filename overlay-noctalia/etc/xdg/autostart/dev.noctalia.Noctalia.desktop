@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Noctalia
-Comment=A sleek, customizable desktop shell crafted for Wayland.
-Exec=noctalia --daemon
-Icon=noctalia
-Terminal=false
-StartupNotify=false

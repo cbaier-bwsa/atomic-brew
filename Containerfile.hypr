@@ -6,14 +6,27 @@ FROM ghcr.io/cbaier-bwsa/atomic-brew:base
 # Baut den kompletten Hyprland-Bibliotheksstack konsistent aus einer Quelle, inkl.
 # hyprland-guiutils — im Gegensatz zu ashbuk/Hyprland-Fedora (vorherige Quelle), das
 # seine Abhängigkeiten privat vendort und hyprland-guiutils nicht mitbaute.
+# gnome-keyring-pam liefert pam_gnome_keyring.so, das /etc/pam.d/sddm bereits referenziert
+# (optional, "-" Präfix). Ohne das Paket bleibt der Login-Keyring beim SDDM-Login ungeöffnet,
+# und jede App, die Secret Service nutzt (z.B. Vivaldi), fragt bei jedem Start erneut das
+# Keyring-Passwort ab, statt es automatisch mit dem SDDM-Login-Passwort zu entsperren.
 RUN dnf -y copr enable lionheartp/Hyprland && \
     dnf -y --exclude=kitty install \
         hyprland xdg-desktop-portal-hyprland hyprlock hypridle hyprland-guiutils \
-        mako sddm sddm-wayland-generic && \
+        mako sddm sddm-wayland-generic gnome-keyring-pam && \
     dnf -y --repo=fedora --repo=updates install kitty && \
     dnf clean all && \
     rm -rf /var/cache/libdnf5 /var/lib/dnf /var/log/* /var/cache/ldconfig/* \
            /run/dnf /run/svnserve
+
+# Autostart-Eintrag für ibus-daemon. Kein Hyprland-/ibus-Paket bringt selbst einen mit; ohne
+# laufenden ibus-daemon bricht org.freedesktop.portal.IBus ab, sobald eine App (z.B. Obsidian)
+# den IBus-Input-Method-Portal anfragt ("Failed unit detected", siehe .docs/15). Bewusst als
+# /etc/xdg/autostart-Eintrag statt exec-once in hyprland.conf/.lua: Autostart-Verzeichnisse
+# werden bei jedem Login live gelesen, hyprland.conf/.lua dagegen nur über /etc/skel bei
+# Useranlage — bei bereits bestehenden Usern kommt eine hyprland.conf/.lua-Änderung nie an
+# (siehe .docs/11, Abschnitt "Autostart griff nicht").
+COPY overlay-hypr/ /
 
 RUN bootc container lint
 

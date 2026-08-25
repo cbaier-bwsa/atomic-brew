@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=IBus Daemon
+Comment=Starts the IBus input method daemon so org.freedesktop.portal.IBus (used by apps like Obsidian for emoji/IME input) has something to connect to.
+Exec=ibus-daemon -drxs
+Terminal=false
+StartupNotify=false
