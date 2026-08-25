@@ -8,31 +8,27 @@ build:
 build-variant variant:
     podman build -f Containerfile.{{variant}} -t {{image}}:{{variant}} .
 
-# Basis, dann Sway; :latest zeigt weiter auf Sway
-build-all: build (build-variant "sway")
-    podman tag {{image}}:sway {{image}}:latest
-
-# Hyprland separat, weil additiv und (noch) nicht Teil von :latest
+# Hyprland separat anwählbar, als Zwischenstufe des Hauptstrangs
 build-hypr: build (build-variant "hypr")
 
-# Noctalia separat, weil additiv und (noch) nicht Teil von :latest
-build-noctalia: build-hypr (build-variant "noctalia")
+# Hauptstrang: Basis -> Hyprland -> Noctalia; :latest zeigt auf Noctalia
+build-all: build-hypr (build-variant "noctalia")
+    podman tag {{image}}:noctalia {{image}}:latest
+
+# Sway separat halten, seit :noctalia der Hauptstrang ist (nicht mehr Teil von :latest)
+build-sway: build (build-variant "sway")
 
 push variant:
     podman push {{image}}:{{variant}}
 
 push-all:
-    for t in base sway latest; do podman push {{image}}:$t; done
+    for t in base hypr noctalia latest; do podman push {{image}}:$t; done
 
-# Hyprland-Push separat halten, solange :hypr nicht in CI eingebunden ist
-push-hypr:
-    podman push {{image}}:hypr
+# Sway-Push separat halten, solange :sway nicht in CI eingebunden ist
+push-sway:
+    podman push {{image}}:sway
 
-# Noctalia-Push separat halten, solange :noctalia nicht in CI eingebunden ist
-push-noctalia:
-    podman push {{image}}:noctalia
-
-lint variant="sway":
+lint variant="noctalia":
     podman run --rm {{image}}:{{variant}} bootc container lint
 
 login:

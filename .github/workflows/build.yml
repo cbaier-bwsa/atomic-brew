@@ -22,9 +22,10 @@ jobs:
 
       - name: Build
         run: |
-          podman build -f Containerfile      -t "${IMAGE}:base" .
-          podman build -f Containerfile.sway -t "${IMAGE}:sway" .
-          podman tag "${IMAGE}:sway" "${IMAGE}:latest"
+          podman build -f Containerfile          -t "${IMAGE}:base" .
+          podman build -f Containerfile.hypr     -t "${IMAGE}:hypr" .
+          podman build -f Containerfile.noctalia -t "${IMAGE}:noctalia" .
+          podman tag "${IMAGE}:noctalia" "${IMAGE}:latest"
 
       # podman-Login für den Push (schreibt nach ~/.docker/config.json,
       # damit cosign später dieselben Credentials findet)
@@ -68,15 +69,15 @@ jobs:
             return 1
           }
 
-          for tag in base sway latest; do
+          for tag in base hypr noctalia latest; do
             push_with_retry "${tag}"
           done
-          # :latest teilt sich den Digest mit :sway, und die Signatur hängt am Digest,
-          # nicht am Tag — also nur die beiden echten Images signieren.
+          # :latest teilt sich den Digest mit :noctalia, und die Signatur hängt am Digest,
+          # nicht am Tag — also nur die drei echten Images signieren.
           # kein Rekor-Upload: die Verifikation läuft rein über cosign.pub,
           # der öffentliche Transparency-Log bringt hier nichts und lässt den
           # Job scheitern, sobald ein Digest schon einmal signiert wurde
-          for tag in base sway; do
+          for tag in base hypr noctalia; do
             cosign sign --yes --tlog-upload=false \
               --key env://COSIGN_PRIVATE_KEY \
               "${IMAGE}@$(cat /tmp/digest-${tag})"
