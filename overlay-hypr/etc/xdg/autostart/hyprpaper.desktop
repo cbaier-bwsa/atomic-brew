@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=hyprpaper
+Comment=Sets the desktop wallpaper from ~/.config/hypr/hyprpaper.conf.
+Exec=hyprpaper
+Terminal=false
+StartupNotify=false

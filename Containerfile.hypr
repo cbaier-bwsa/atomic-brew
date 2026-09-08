@@ -13,7 +13,7 @@ FROM ghcr.io/cbaier-bwsa/atomic-brew:base
 RUN dnf -y copr enable lionheartp/Hyprland && \
     dnf -y --exclude=kitty install \
         hyprland xdg-desktop-portal-hyprland hyprlock hypridle hyprland-guiutils \
-        mako sddm sddm-wayland-generic gnome-keyring-pam && \
+        hyprpaper mako sddm sddm-wayland-generic gnome-keyring-pam && \
     dnf -y --repo=fedora --repo=updates install kitty && \
     dnf clean all && \
     rm -rf /var/cache/libdnf5 /var/lib/dnf /var/log/* /var/cache/ldconfig/* \
@@ -26,6 +26,11 @@ RUN dnf -y copr enable lionheartp/Hyprland && \
 # werden bei jedem Login live gelesen, hyprland.conf/.lua dagegen nur über /etc/skel bei
 # Useranlage — bei bereits bestehenden Usern kommt eine hyprland.conf/.lua-Änderung nie an
 # (siehe .docs/11, Abschnitt "Autostart griff nicht").
+#
+# hyprpaper.desktop (gleiches Muster): setzt den Hintergrund aus ~/.config/hypr/hyprpaper.conf.
+# Ersetzt Noctalias eigenen Wallpaper-Overwrite (dessen Anzeige mit Zeitversatz startet) als
+# alleinige Quelle des Hintergrunds; wallpaper.enabled=false gehört dazu in Noctalias
+# settings.toml (Runtime-State unter ~/.local/state, nicht Teil des Images).
 COPY overlay-hypr/ /
 
 RUN bootc container lint
