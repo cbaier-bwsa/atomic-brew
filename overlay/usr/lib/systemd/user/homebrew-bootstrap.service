@@ -7,9 +7,10 @@ Wants=podman-user-wait-network-online.service
 
 [Service]
 Type=oneshot
-Environment=NONINTERACTIVE=1
-ExecStart=/usr/bin/bash -c "curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash"
-ExecStartPost=/usr/bin/bash -c "eval \"$(/var/home/linuxbrew/.linuxbrew/bin/brew shellenv)\" && brew bundle --file=/usr/share/coaching/Brewfile"
+ExecStart=/usr/bin/bash /usr/libexec/homebrew-bootstrap.sh
+# Exit-Code 91 = homebrew-bootstrap.sh hat mangels Internetverbindung abgebrochen (eigene
+# notify-send-Meldung statt "failed unit"); wird dank SuccessExitStatus als Erfolg gewertet.
+SuccessExitStatus=91
 RemainAfterExit=yes
 
 [Install]
