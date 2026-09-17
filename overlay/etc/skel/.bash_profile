@@ -1,7 +1,6 @@
 # /etc/skel/.bash_profile
-# Homebrew-PATH früh verfügbar machen (falls schon installiert)
-[ -x /var/home/linuxbrew/.linuxbrew/bin/brew ] && \
-    eval "$(/var/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+# Homebrew-PATH kommt bereits aus /etc/profile.d/homebrew.sh (laeuft vor
+# dieser Datei und deckt auch nicht-login-interaktive Shells ab).
 
 # In Nushell wechseln, sobald es aus Brew vorhanden ist -- aber nur bei einer
 # echten interaktiven Konsolen-Session. SDDMs /etc/sddm/wayland-session reexecs
