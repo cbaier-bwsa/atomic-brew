@@ -17,10 +17,27 @@ NO_NETWORK_EXIT=91
 
 notify() {
     if command -v notify-send >/dev/null 2>&1; then
+        # org.freedesktop.Notifications wird bei :noctalia ausschließlich von Noctalias eigenem
+        # Daemon bedient (mako.service ist global maskiert, siehe Containerfile.noctalia). Der
+        # Daemon ist aber nur ein xdg-autostart-Programm, kein systemd-Unit, und hat beim
+        # allerersten Login -- dieser Service läuft direkt nach default.target, ohne auf die
+        # grafische Session zu warten -- den Namen oft noch nicht übernommen. Ohne Owner versucht
+        # D-Bus, den *maskierten* mako.service zu aktivieren; notify-send bricht dann mit "unit is
+        # masked" ab, was wegen `set -e` den gesamten Bootstrap wieder in den failed-Status riss
+        # (live beobachtet: Erststart ohne Internet zeigte wieder die generische
+        # "Failed unit"-Meldung statt der eigenen). Deshalb kurz auf einen Owner warten.
+        local tries=0
+        while [[ $tries -lt 20 ]] && ! busctl --user list-names 2>/dev/null | grep -q org.freedesktop.Notifications; do
+            sleep 1
+            tries=$((tries + 1))
+        done
         # expire-time=0: Meldung bleibt stehen, bis sie manuell weggeklickt wird (statt nach
         # ein paar Sekunden automatisch zu verschwinden, wie es bei fehlendem Internet sonst
         # leicht unbemerkt bliebe).
-        notify-send --urgency=critical --expire-time=0 --icon=network-wireless-disconnected "$@"
+        # "|| printf" statt uns auf das Gelingen zu verlassen: selbst nach der Wartezeit darf ein
+        # D-Bus-Fehler hier nicht den ganzen Bootstrap wieder in den failed-Status reißen.
+        notify-send --urgency=critical --expire-time=0 --icon=network-wireless-disconnected "$@" \
+            || printf '%s: %s\n' "$1" "$2" >&2
     else
         printf '%s: %s\n' "$1" "$2" >&2
     fi
