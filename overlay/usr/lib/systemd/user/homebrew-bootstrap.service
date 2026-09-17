@@ -2,7 +2,8 @@
 [Unit]
 Description=Homebrew Erstinstallation + Brewfile nach /var/home/linuxbrew
 ConditionPathExists=!/var/home/linuxbrew/.linuxbrew/bin/brew
-After=default.target
+After=default.target podman-user-wait-network-online.service
+Wants=podman-user-wait-network-online.service
 
 [Service]
 Type=oneshot
