@@ -34,8 +34,18 @@ COPY overlay-noctalia/ /
 # (verifiziert per journalctl, .docs/15 Nachtrag).
 # Der Stock-Menu-Bind (SUPER+R) zeigt auf "hyprlauncher", das im Image nicht installiert ist —
 # stattdessen auf Noctalias eigenen Launcher (Bar) umbiegen.
+#
+# xdg-desktop-portal-hyprland spawns an invisible X11 helper window for screen sharing
+# (xwaylandvideobridge) on every session start. Hyprland does not hide it by default, so
+# without a window rule it shows up as an empty black window on top of everything else —
+# live-verified via `hyprctl clients` (class: xwaylandvideobridge) and `journalctl`
+# ("Failed to register with host portal"). Note: overlay-noctalia used to also ship its own
+# ~/.config/hypr/hyprland.conf, but Hyprland prefers hyprland.lua over hyprland.conf when
+# both exist, so that file was silently dead code — removed instead of fixed there.
 RUN cp /usr/share/hypr/hyprland.lua /etc/skel/.config/hypr/hyprland.lua && \
     printf '\nhl.on("hyprland.start", function()\n    hl.exec_cmd("ibus-daemon -drxs")\nend)\n' \
+        >> /etc/skel/.config/hypr/hyprland.lua && \
+    printf '\nhl.window_rule({\n    name  = "hide-xwaylandvideobridge",\n    match = { class = "^(xwaylandvideobridge)$" },\n\n    opacity  = "0.0 override",\n    no_anim  = true,\n    no_focus = true,\n    no_blur  = true,\n    max_size = "1 1",\n})\n' \
         >> /etc/skel/.config/hypr/hyprland.lua && \
     sed -i 's/^local menu.*/local menu        = "noctalia msg panel-toggle launcher"/' \
         /etc/skel/.config/hypr/hyprland.lua
