@@ -16,6 +16,7 @@ BREW_BIN=/var/home/linuxbrew/.linuxbrew/bin/brew
 NO_NETWORK_EXIT=91
 
 notify() {
+    local urgency="$1" icon="$2" title="$3" body="$4"
     if command -v notify-send >/dev/null 2>&1; then
         # org.freedesktop.Notifications wird bei :noctalia ausschließlich von Noctalias eigenem
         # Daemon bedient (mako.service ist global maskiert, siehe Containerfile.noctalia). Der
@@ -32,14 +33,13 @@ notify() {
             tries=$((tries + 1))
         done
         # expire-time=0: Meldung bleibt stehen, bis sie manuell weggeklickt wird (statt nach
-        # ein paar Sekunden automatisch zu verschwinden, wie es bei fehlendem Internet sonst
-        # leicht unbemerkt bliebe).
+        # ein paar Sekunden automatisch zu verschwinden, wie es leicht unbemerkt bliebe).
         # "|| printf" statt uns auf das Gelingen zu verlassen: selbst nach der Wartezeit darf ein
         # D-Bus-Fehler hier nicht den ganzen Bootstrap wieder in den failed-Status reißen.
-        notify-send --urgency=critical --expire-time=0 --icon=network-wireless-disconnected "$@" \
-            || printf '%s: %s\n' "$1" "$2" >&2
+        notify-send --urgency="$urgency" --expire-time=0 --icon="$icon" "$title" "$body" \
+            || printf '%s: %s\n' "$title" "$body" >&2
     else
-        printf '%s: %s\n' "$1" "$2" >&2
+        printf '%s: %s\n' "$title" "$body" >&2
     fi
 }
 
@@ -52,11 +52,11 @@ if ! curl -fsS --max-time 5 -o /dev/null https://raw.githubusercontent.com; then
     # Login-Umgebung); alles außer de_* fällt auf Englisch zurück.
     case "${LANG:-}" in
         de_*)
-            notify "Keine Internetverbindung" \
+            notify critical network-wireless-disconnected "Keine Internetverbindung" \
                 "Die Ersteinrichtung von Atomic Brew benötigt eine Internetverbindung. Bitte WLAN einrichten oder Ethernet verbinden und neu starten."
             ;;
         *)
-            notify "No internet connection" \
+            notify critical network-wireless-disconnected "No internet connection" \
                 "Atomic Brew's initial setup requires an internet connection. Please set up Wi-Fi or connect Ethernet, then restart."
             ;;
     esac
@@ -68,3 +68,14 @@ curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | 
 
 eval "$("$BREW_BIN" shellenv)"
 brew bundle --file=/usr/share/coaching/Brewfile
+
+case "${LANG:-}" in
+    de_*)
+        notify normal task-complete "Ersteinrichtung abgeschlossen" \
+            "Homebrew und die CLI-Tools aus dem Brewfile sind installiert."
+        ;;
+    *)
+        notify normal task-complete "Initial setup complete" \
+            "Homebrew and the CLI tools from the Brewfile have been installed."
+        ;;
+esac
