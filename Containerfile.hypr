@@ -39,33 +39,27 @@ RUN dnf -y copr enable lionheartp/Hyprland && \
 # settings.toml (Runtime-State unter ~/.local/state, nicht Teil des Images).
 #
 # usr/share/uwsm/env-hyprland: gnome-keyring-pam (s.o.) entsperrt den Login-Keyring zwar korrekt
-# über den "sddm"-PAM-Stack und setzt dabei GNOME_KEYRING_CONTROL/SSH_AUTH_SOCK im Environment,
-# aus dem uwsm gestartet wird — der separate "systemd-user"-PAM-Stack, der den systemd-`--user`-
-# Manager (und darüber dbus-broker) für dieselbe Session startet, bindet pam_gnome_keyring
-# jedoch nicht ein (siehe auditd-Grantors: "systemd-user" listet kein pam_gnome_keyring, "sddm"
-# schon) und kennt die beiden Variablen dadurch nie. Fragt danach eine App den Secret Service
-# (org.freedesktop.secrets) an, aktiviert D-Bus einen *zweiten*, frischen gnome-keyring-daemon
-# ohne Kenntnis vom bereits entsperrten Login-Keyring — der muss das Passwort erneut per
-# gcr-prompter abfragen, und zwar bei jeder einzelnen Secret-Anfrage neu (mehrere Dialoge kurz
-# hintereinander), obwohl der Keyring laut Login-Log bereits entsperrt ist. Live verifiziert per
-# `journalctl` (wiederholte "Gcr: starting password prompt"-Einträge, `couldn't access control
-# socket`) und `systemctl --user show-environment` (beide Variablen fehlen dort).
+# über den "sddm"-PAM-Stack, aber sddm-wayland-generic übernimmt die dabei von pam_gnome_keyring
+# gesetzten Variablen (GNOME_KEYRING_CONTROL/SSH_AUTH_SOCK) nicht in die exec'te Session — live
+# verifiziert per `/proc/<Hyprland-PID>/environ`: keine der beiden Variablen kommt dort an. Fragt
+# danach eine App den Secret Service (org.freedesktop.secrets) an, aktiviert D-Bus einen zweiten
+# gnome-keyring-daemon; der findet den bereits entsperrten Login-Keyring aber eigenständig über
+# den festen Pfad $XDG_RUNTIME_DIR/keyring/control ("discover_other_daemon: 1") und braucht daher
+# kein neues Passwort — secrets/pkcs11 funktionieren also auch ganz ohne Environment-Variablen.
+# (Ein erster, hier verworfener Versuch nahm fälschlich an, systemd --user kenne die Variablen
+# nur deshalb nicht, weil dessen eigener PAM-Stack pam_gnome_keyring nicht einbindet, und wollte
+# das per UWSM_ALWAYS_EXPORT_VARNAMES beheben — half nicht, weil die Variablen schon vorher, in
+# Hyprlands eigenem Environment, fehlten.)
 #
-# Ein erster Versuch, das per zusätzlichem /etc/xdg/autostart-Eintrag
-# (`systemctl --user import-environment ...`) zu fixen, griff nicht: solche Autostart-Einträge
-# laufen als `app-*@autostart.service`, vom systemd-`--user`-Manager selbst gestartet, und erben
-# dadurch dessen (keyring-loses) Environment statt das der Hyprland-Session — der Import lief
-# also mit den Variablen bereits unbesetzt ("Environment variable $GNOME_KEYRING_CONTROL not
-# set, ignoring."), live verifiziert nach einem `bootc upgrade` mit diesem Stand.
-#
-# Der korrekte Ansatz nutzt uwsm's eigenen Mechanismus dafür: env-hyprland wird von uwsms
-# Environment-Preloader (prepare-env.sh) VOR dem eigentlichen Hyprland-Start geladen, noch im
-# Kontext der PAM-korrekten "uwsm start"-Umgebung. GNOME_KEYRING_CONTROL/SSH_AUTH_SOCK sind dort
-# zwar schon vorhanden, aber unverändert (nur ererbt) — uwsm exportiert standardmäßig nur
-# Variablen, die sich durch das Sourcen der env-Dateien geändert haben. UWSM_ALWAYS_EXPORT_VARNAMES
-# (dokumentiert in uwsm(1)) zwingt uwsm, diese unveränderten Variablen trotzdem an den
-# systemd-`--user`-Manager weiterzugeben, siehe main.py: update_varnames_sets() liest die Liste
-# aus genau dem Environment, das env-hyprland gesetzt hat.
+# Für SSH gibt es diesen impliziten Fallback nicht: ssh-Clients brauchen SSH_AUTH_SOCK explizit
+# gesetzt, und der ssh-Bestandteil von gnome-keyring startet unter Hyprland ohnehin nie
+# automatisch — sein Autostart-Eintrag (gnome-keyring-ssh.desktop, aus gnome-keyring-pam) trägt
+# "OnlyShowIn=GNOME;Unity;MATE" und wird von uwsms XDG-Autostart-Filter für
+# XDG_CURRENT_DESKTOP=Hyprland konsequent übersprungen. env-hyprland startet den ssh-Bestandteil
+# deshalb direkt gegen den schon entsperrten Login-Keyring (kein neuer Prompt, s.o.) und
+# übernimmt SSH_AUTH_SOCK aus dessen Ausgabe — landet dadurch als neue (in uwsms env_pre nicht
+# vorhandene) Variable ganz regulär in dessen env_post und wird an den systemd-`--user`-Manager
+# weitergegeben.
 COPY overlay-hypr/ /
 
 RUN bootc container lint

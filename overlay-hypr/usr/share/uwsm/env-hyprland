@@ -1,20 +1,29 @@
 # Sourced by uwsm's environment preloader (prepare-env.sh) before Hyprland starts.
 #
-# gnome-keyring-pam (siehe Containerfile.hypr) entsperrt den Login-Keyring korrekt über den
-# "sddm"-PAM-Stack und setzt dabei GNOME_KEYRING_CONTROL/SSH_AUTH_SOCK im Environment, aus dem
-# uwsm gestartet wird. Da beide Variablen dabei unverändert (nur ererbt, nicht neu gesetzt)
-# durchgereicht werden, fallen sie aus uwsm's normaler env_pre/env_post-Differenzbildung heraus
-# und werden nicht automatisch an den systemd-`--user`-Manager weitergegeben. Der separate
-# "systemd-user"-PAM-Stack, der diesen Manager (und darüber dbus-broker) für dieselbe Session
-# startet, bindet pam_gnome_keyring nicht ein, kennt die Variablen also nie von selbst.
+# Ursprüngliche Annahme (UWSM_ALWAYS_EXPORT_VARNAMES="GNOME_KEYRING_CONTROL SSH_AUTH_SOCK", s.
+# Git-History) war unvollständig: gnome-keyring-pam entsperrt den Login-Keyring zwar korrekt über
+# den "sddm"-PAM-Stack, aber sddm-wayland-generic übernimmt die dabei von pam_gnome_keyring
+# gesetzten Variablen offenbar gar nicht in die exec'te Session -- live verifiziert per
+# `/proc/<Hyprland-PID>/environ`: weder GNOME_KEYRING_CONTROL noch SSH_AUTH_SOCK kommen dort an,
+# lange bevor uwsm überhaupt etwas exportieren könnte. UWSM_ALWAYS_EXPORT_VARNAMES half deshalb
+# nicht (uwsm exportiert nur Variablen, die tatsächlich in seinem env_post vorhanden sind).
 #
-# Ohne das: sobald eine App den Secret Service (org.freedesktop.secrets) anfragt, aktiviert
-# D-Bus einen zweiten, unentsperrten gnome-keyring-daemon, der bei jeder einzelnen
-# Secret-Anfrage erneut per gcr-prompter nach dem Passwort fragt, obwohl der Login-Keyring laut
-# gkr-pam-Log bereits entsperrt ist.
+# Für secrets/pkcs11 ist das trotzdem unschädlich: ein neu (D-Bus-)aktivierter
+# gnome-keyring-daemon findet den bereits beim Login entsperrten Daemon eigenständig über den
+# festen Pfad $XDG_RUNTIME_DIR/keyring/control -- live verifiziert ("discover_other_daemon: 1"),
+# unabhängig vom Environment. Deshalb keine wiederholten gcr-prompter-Passwortabfragen mehr.
 #
-# UWSM_ALWAYS_EXPORT_VARNAMES zwingt uwsm, diese unveränderten Variablen trotzdem zu
-# exportieren (siehe uwsm(1), Abschnitt "Environment vars"; main.py: update_varnames_sets()
-# liest sie aus env_post, danach werden always_export-Variablen unabhängig von der
-# env_pre/env_post-Differenz übernommen).
-export UWSM_ALWAYS_EXPORT_VARNAMES="GNOME_KEYRING_CONTROL SSH_AUTH_SOCK"
+# Für SSH gibt es diesen Fallback nicht: ssh-Clients brauchen SSH_AUTH_SOCK explizit gesetzt, und
+# der ssh-Bestandteil von gnome-keyring startet unter Hyprland ohnehin nie automatisch -- das
+# mitgelieferte Autostart-Desktop-File (/etc/xdg/autostart/gnome-keyring-ssh.desktop) trägt
+# "OnlyShowIn=GNOME;Unity;MATE" und wird von uwsms XDG-Autostart-Filter für
+# XDG_CURRENT_DESKTOP=Hyprland konsequent übersprungen.
+#
+# Fix: den ssh-Bestandteil hier direkt gegen den schon entsperrten Login-Keyring starten (kein
+# neuer Passwort-Prompt, s.o.) und SSH_AUTH_SOCK aus dessen Ausgabe übernehmen. Die Ausgabe ist
+# eine reine "VAR=value"-Zeile ohne "export" (gnome-keyring-daemons klassisches
+# eval-$(...)-Format), daher zusätzliches "export". Landet dadurch als neue Variable in
+# env_post (in env_pre nicht vorhanden) und wird von uwsm ganz regulär -- ohne
+# UWSM_ALWAYS_EXPORT_VARNAMES -- an den systemd-`--user`-Manager weitergegeben.
+eval "$(/usr/bin/gnome-keyring-daemon --start --components=ssh 2>/dev/null)"
+export SSH_AUTH_SOCK
