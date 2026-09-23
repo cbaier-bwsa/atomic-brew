@@ -11,14 +11,15 @@ FROM ghcr.io/cbaier-bwsa/atomic-brew:base
 # und jede App, die Secret Service nutzt (z.B. Vivaldi), fragt bei jedem Start erneut das
 # Keyring-Passwort ab, statt es automatisch mit dem SDDM-Login-Passwort zu entsperren.
 #
-# sddm-breeze: sddm selbst erwartet als Paket-Default "01-breeze-fedora" (siehe
-# /etc/sddm.conf), das Theme steckt aber in diesem separaten Paket. Ohne es ist
-# /usr/share/sddm/themes/ leer und sddm loggt bei jedem Start "configured theme
-# ... doesn't exist, using the embedded theme instead" (harmlos, aber unschön).
+# sddm-breeze bewusst NICHT installieren: sddm erwartet zwar "01-breeze-fedora" als
+# einkompilierten Default, aber das Paket zieht über plasma-workspace ~240 Pakete / ~1 GiB
+# (kwin, xdg-desktop-portal-kde, qt6-qtwebengine, xwaylandvideobridge …) nach. Stattdessen
+# setzt overlay-hypr/etc/sddm.conf.d/theme.conf Current= leer -> eingebettetes Theme, ohne
+# "configured theme ... doesn't exist"-Warnung.
 RUN dnf -y copr enable lionheartp/Hyprland && \
     dnf -y --exclude=kitty install \
         hyprland xdg-desktop-portal-hyprland hyprlock hypridle hyprland-guiutils \
-        hyprpaper mako sddm sddm-wayland-generic sddm-breeze gnome-keyring-pam && \
+        hyprpaper mako sddm sddm-wayland-generic gnome-keyring-pam && \
     dnf -y --repo=fedora --repo=updates install kitty && \
     dnf clean all && \
     rm -rf /var/cache/libdnf5 /var/lib/dnf /var/log/* /var/cache/ldconfig/* \
