@@ -37,6 +37,23 @@ RUN dnf -y copr enable lionheartp/Hyprland && \
 # Ersetzt Noctalias eigenen Wallpaper-Overwrite (dessen Anzeige mit Zeitversatz startet) als
 # alleinige Quelle des Hintergrunds; wallpaper.enabled=false gehört dazu in Noctalias
 # settings.toml (Runtime-State unter ~/.local/state, nicht Teil des Images).
+#
+# gnome-keyring-env.desktop: gnome-keyring-pam (s.o.) entsperrt den Login-Keyring zwar korrekt
+# über den "sddm"-PAM-Stack und setzt dabei GNOME_KEYRING_CONTROL/SSH_AUTH_SOCK im Environment
+# der gestarteten Hyprland-Session — der "systemd-user"-PAM-Stack, der den systemd-`--user`-
+# Manager (und darüber dbus-broker) für dieselbe Session startet, bindet pam_gnome_keyring
+# jedoch nicht ein (siehe auditd-Grantors: "systemd-user" listet kein pam_gnome_keyring, "sddm"
+# schon). systemd --user kennt die beiden Variablen dadurch nie, obwohl sie in der laufenden
+# Hyprland-Session existieren. Fragt danach eine App den Secret Service (org.freedesktop.secrets)
+# an, aktiviert systemd/D-Bus einen *zweiten*, frischen gnome-keyring-daemon ohne Kenntnis vom
+# bereits entsperrten Login-Keyring — der muss das Passwort erneut per gcr-prompter abfragen, und
+# zwar bei jeder einzelnen Secret-Anfrage neu (mehrere Dialoge kurz hintereinander), obwohl der
+# Keyring laut Login-Log bereits entsperrt ist. Live verifiziert per `journalctl` (wiederholte
+# "Gcr: starting password prompt"-Einträge, `couldn't access control socket`) und
+# `systemctl --user show-environment` (GNOME_KEYRING_CONTROL/SSH_AUTH_SOCK fehlen dort). Der
+# Autostart-Eintrag importiert beide Variablen einmalig aus der (bereits korrekten) Session-
+# Umgebung in den systemd-`--user`-Manager, danach nutzen D-Bus-aktivierte Dienste den schon
+# entsperrten Keyring statt einen zweiten zu starten.
 COPY overlay-hypr/ /
 
 RUN bootc container lint
