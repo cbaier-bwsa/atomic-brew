@@ -1,7 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=GNOME Keyring Environment Sync
-Comment=Imports GNOME_KEYRING_CONTROL/SSH_AUTH_SOCK from the PAM-unlocked login keyring into the systemd --user manager, so D-Bus-activated services (e.g. org.freedesktop.secrets) reuse the already-unlocked keyring instead of spawning a second, locked daemon that repeatedly prompts for a password.
-Exec=systemctl --user import-environment GNOME_KEYRING_CONTROL SSH_AUTH_SOCK
-Terminal=false
-StartupNotify=false

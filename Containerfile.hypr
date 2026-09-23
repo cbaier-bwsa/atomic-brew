@@ -38,22 +38,34 @@ RUN dnf -y copr enable lionheartp/Hyprland && \
 # alleinige Quelle des Hintergrunds; wallpaper.enabled=false gehört dazu in Noctalias
 # settings.toml (Runtime-State unter ~/.local/state, nicht Teil des Images).
 #
-# gnome-keyring-env.desktop: gnome-keyring-pam (s.o.) entsperrt den Login-Keyring zwar korrekt
-# über den "sddm"-PAM-Stack und setzt dabei GNOME_KEYRING_CONTROL/SSH_AUTH_SOCK im Environment
-# der gestarteten Hyprland-Session — der "systemd-user"-PAM-Stack, der den systemd-`--user`-
+# usr/share/uwsm/env-hyprland: gnome-keyring-pam (s.o.) entsperrt den Login-Keyring zwar korrekt
+# über den "sddm"-PAM-Stack und setzt dabei GNOME_KEYRING_CONTROL/SSH_AUTH_SOCK im Environment,
+# aus dem uwsm gestartet wird — der separate "systemd-user"-PAM-Stack, der den systemd-`--user`-
 # Manager (und darüber dbus-broker) für dieselbe Session startet, bindet pam_gnome_keyring
 # jedoch nicht ein (siehe auditd-Grantors: "systemd-user" listet kein pam_gnome_keyring, "sddm"
-# schon). systemd --user kennt die beiden Variablen dadurch nie, obwohl sie in der laufenden
-# Hyprland-Session existieren. Fragt danach eine App den Secret Service (org.freedesktop.secrets)
-# an, aktiviert systemd/D-Bus einen *zweiten*, frischen gnome-keyring-daemon ohne Kenntnis vom
-# bereits entsperrten Login-Keyring — der muss das Passwort erneut per gcr-prompter abfragen, und
-# zwar bei jeder einzelnen Secret-Anfrage neu (mehrere Dialoge kurz hintereinander), obwohl der
-# Keyring laut Login-Log bereits entsperrt ist. Live verifiziert per `journalctl` (wiederholte
-# "Gcr: starting password prompt"-Einträge, `couldn't access control socket`) und
-# `systemctl --user show-environment` (GNOME_KEYRING_CONTROL/SSH_AUTH_SOCK fehlen dort). Der
-# Autostart-Eintrag importiert beide Variablen einmalig aus der (bereits korrekten) Session-
-# Umgebung in den systemd-`--user`-Manager, danach nutzen D-Bus-aktivierte Dienste den schon
-# entsperrten Keyring statt einen zweiten zu starten.
+# schon) und kennt die beiden Variablen dadurch nie. Fragt danach eine App den Secret Service
+# (org.freedesktop.secrets) an, aktiviert D-Bus einen *zweiten*, frischen gnome-keyring-daemon
+# ohne Kenntnis vom bereits entsperrten Login-Keyring — der muss das Passwort erneut per
+# gcr-prompter abfragen, und zwar bei jeder einzelnen Secret-Anfrage neu (mehrere Dialoge kurz
+# hintereinander), obwohl der Keyring laut Login-Log bereits entsperrt ist. Live verifiziert per
+# `journalctl` (wiederholte "Gcr: starting password prompt"-Einträge, `couldn't access control
+# socket`) und `systemctl --user show-environment` (beide Variablen fehlen dort).
+#
+# Ein erster Versuch, das per zusätzlichem /etc/xdg/autostart-Eintrag
+# (`systemctl --user import-environment ...`) zu fixen, griff nicht: solche Autostart-Einträge
+# laufen als `app-*@autostart.service`, vom systemd-`--user`-Manager selbst gestartet, und erben
+# dadurch dessen (keyring-loses) Environment statt das der Hyprland-Session — der Import lief
+# also mit den Variablen bereits unbesetzt ("Environment variable $GNOME_KEYRING_CONTROL not
+# set, ignoring."), live verifiziert nach einem `bootc upgrade` mit diesem Stand.
+#
+# Der korrekte Ansatz nutzt uwsm's eigenen Mechanismus dafür: env-hyprland wird von uwsms
+# Environment-Preloader (prepare-env.sh) VOR dem eigentlichen Hyprland-Start geladen, noch im
+# Kontext der PAM-korrekten "uwsm start"-Umgebung. GNOME_KEYRING_CONTROL/SSH_AUTH_SOCK sind dort
+# zwar schon vorhanden, aber unverändert (nur ererbt) — uwsm exportiert standardmäßig nur
+# Variablen, die sich durch das Sourcen der env-Dateien geändert haben. UWSM_ALWAYS_EXPORT_VARNAMES
+# (dokumentiert in uwsm(1)) zwingt uwsm, diese unveränderten Variablen trotzdem an den
+# systemd-`--user`-Manager weiterzugeben, siehe main.py: update_varnames_sets() liest die Liste
+# aus genau dem Environment, das env-hyprland gesetzt hat.
 COPY overlay-hypr/ /
 
 RUN bootc container lint

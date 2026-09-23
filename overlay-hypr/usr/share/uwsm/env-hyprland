@@ -1,0 +1,20 @@
+# Sourced by uwsm's environment preloader (prepare-env.sh) before Hyprland starts.
+#
+# gnome-keyring-pam (siehe Containerfile.hypr) entsperrt den Login-Keyring korrekt über den
+# "sddm"-PAM-Stack und setzt dabei GNOME_KEYRING_CONTROL/SSH_AUTH_SOCK im Environment, aus dem
+# uwsm gestartet wird. Da beide Variablen dabei unverändert (nur ererbt, nicht neu gesetzt)
+# durchgereicht werden, fallen sie aus uwsm's normaler env_pre/env_post-Differenzbildung heraus
+# und werden nicht automatisch an den systemd-`--user`-Manager weitergegeben. Der separate
+# "systemd-user"-PAM-Stack, der diesen Manager (und darüber dbus-broker) für dieselbe Session
+# startet, bindet pam_gnome_keyring nicht ein, kennt die Variablen also nie von selbst.
+#
+# Ohne das: sobald eine App den Secret Service (org.freedesktop.secrets) anfragt, aktiviert
+# D-Bus einen zweiten, unentsperrten gnome-keyring-daemon, der bei jeder einzelnen
+# Secret-Anfrage erneut per gcr-prompter nach dem Passwort fragt, obwohl der Login-Keyring laut
+# gkr-pam-Log bereits entsperrt ist.
+#
+# UWSM_ALWAYS_EXPORT_VARNAMES zwingt uwsm, diese unveränderten Variablen trotzdem zu
+# exportieren (siehe uwsm(1), Abschnitt "Environment vars"; main.py: update_varnames_sets()
+# liest sie aus env_post, danach werden always_export-Variablen unabhängig von der
+# env_pre/env_post-Differenz übernommen).
+export UWSM_ALWAYS_EXPORT_VARNAMES="GNOME_KEYRING_CONTROL SSH_AUTH_SOCK"
