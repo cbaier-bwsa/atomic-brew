@@ -27,6 +27,14 @@ RUN systemctl --global enable homebrew-bootstrap.service
 # dahin maskieren, wie von den betroffenen Projekten selbst als Workaround genannt.
 RUN systemctl mask systemd-remount-fs.service
 
+# --- initramfs neu erzeugen, damit 90-no-gpu.conf aus dem Overlay greift ---
+# Muss nach allen dnf-/COPY-Schritten laufen, die Kernel, dracut oder Plymouth betreffen.
+RUN set -eu; \
+    KVER="$(ls /usr/lib/modules)"; \
+    [ "$(echo "$KVER" | wc -l)" -eq 1 ] || { echo "Mehr als ein Kernel: $KVER" >&2; exit 1; }; \
+    DRACUT_NO_XATTR=1 dracut --no-hostonly --reproducible --add ostree \
+        --kver "$KVER" -f "/usr/lib/modules/$KVER/initramfs.img"
+
 # --- bootc-Lint als Qualitätssicherung im Build ---
 RUN bootc container lint
 
